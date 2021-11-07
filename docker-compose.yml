@@ -1,0 +1,69 @@
+version: '3.7'
+services:
+    nginx:
+        image: nginx:alpine
+        container_name: laravel_nginx_webserver
+        restart: unless-stopped
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            - ./:/var/www/html:cached
+            - ./.docker/nginx:/etc/nginxconf.d
+            - ./.docker/nginx/ssl:/etc/nginx/conf.d/ssl
+        depends_on:
+            - app
+        networks:
+            - laravel-network
+
+    app:
+        build:
+            context: ./.docker/php
+            dockerfile: Dockerfile
+        container_name: laravel_phpfpm_app
+        restart: unless-stopped
+        volumes:
+            - ./:/var/www/html:cached
+            - ./.docker/php/php-fpm.ini:/usr/local/etc/php/conf.d/custom.ini
+            - ~/.ssh:/root/.ssh
+        depends_on:
+            - mariadb
+            - redis
+        networks:
+            - laravel-network
+
+    mariadb:
+        image: mariadb:10.5.5
+        container_name: laravel_mariadb_database
+        restart: unless-stopped
+        ports:
+            - "3306:3306"
+        volumes:
+            - ./data/mysql:/var/lib/mysql
+        environment:
+            MYSQL_DATABASE: laravel_app
+            MYSQL_USER: root
+            MYSQL_ROOT_PASSWORD: 12345678
+            MYSQL_PASSWORD: 12345678
+        networks:
+            - laravel-network
+
+    redis:
+        image: redis:alpine
+        container_name: laravel_redis
+        restart: unless-stopped
+        ports:
+            - "6379:6379"
+        volumes:
+            - ./data/redis:/data
+        networks:
+            - laravel-network
+
+networks:
+    laravel-network:
+        driver: bridge
+
+volumes:
+    laravel-volume:
+        driver: local
+
